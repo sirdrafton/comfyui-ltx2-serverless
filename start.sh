@@ -4,6 +4,20 @@ echo "=========================================="
 echo "Starting ComfyUI LTX-2 Video Worker"
 echo "=========================================="
 
+# HuggingFace token for authenticated downloads
+HF_TOKEN="${HF_TOKEN:-}"
+
+echo ""
+echo "=========================================="
+echo "Environment Check"
+echo "=========================================="
+if [ -n "$HF_TOKEN" ]; then
+    echo "✓ HF_TOKEN is set (${#HF_TOKEN} characters)"
+    echo "  Token prefix: ${HF_TOKEN:0:10}..."
+else
+    echo "✗ HF_TOKEN is NOT set - authenticated downloads will fail!"
+fi
+
 # Robust download function with retries and fallbacks
 download_hf_file() {
     local repo=$1
@@ -13,7 +27,8 @@ download_hf_file() {
     local retry=0
     
     if [ -f "$dest" ]; then
-        echo "✓ Already exists: $dest"
+        local size=$(du -h "$dest" | cut -f1)
+        echo "✓ Already exists: $dest ($size)"
         return 0
     fi
     
@@ -24,15 +39,34 @@ download_hf_file() {
     mkdir -p "$(dirname "$dest")"
     
     while [ $retry -lt $max_retries ]; do
-        if wget -q --show-progress --timeout=60 -O "$dest" \
+        # Method 1: With HF token if available
+        if [ -n "$HF_TOKEN" ]; then
+            echo "  Attempting download with HF_TOKEN..."
+            if curl -L --fail --progress-bar --max-time 1800 \
+                -H "Authorization: Bearer $HF_TOKEN" \
+                -o "$dest" \
+                "https://huggingface.co/${repo}/resolve/main/${filename}"; then
+                local size=$(du -h "$dest" | cut -f1)
+                echo "✓ Downloaded with token: $filename ($size)"
+                return 0
+            else
+                echo "  Token download failed, trying without..."
+            fi
+        fi
+        
+        # Method 2: Without token (for public repos)
+        echo "  Attempting download without token..."
+        if wget -q --show-progress --timeout=300 -O "$dest" \
             "https://huggingface.co/${repo}/resolve/main/${filename}" 2>/dev/null; then
-            echo "✓ Downloaded: $filename"
+            local size=$(du -h "$dest" | cut -f1)
+            echo "✓ Downloaded: $filename ($size)"
             return 0
         fi
         
-        if curl -L --fail --progress-bar --max-time 600 -o "$dest" \
+        if curl -L --fail --progress-bar --max-time 1800 -o "$dest" \
             "https://huggingface.co/${repo}/resolve/main/${filename}" 2>/dev/null; then
-            echo "✓ Downloaded: $filename"
+            local size=$(du -h "$dest" | cut -f1)
+            echo "✓ Downloaded: $filename ($size)"
             return 0
         fi
         
@@ -41,7 +75,7 @@ download_hf_file() {
         sleep 5
     done
     
-    echo "✗ FAILED to download: $filename"
+    echo "✗ FAILED to download: $filename after $max_retries attempts"
     return 1
 }
 
@@ -51,24 +85,32 @@ echo "Downloading Models..."
 echo "=========================================="
 
 # LTX-2 Checkpoint (27.1 GB)
+echo ""
+echo "[1/4] LTX-2 Checkpoint"
 download_hf_file \
     "Lightricks/LTX-2" \
     "ltx-2-19b-dev-fp8.safetensors" \
     "/comfyui/models/checkpoints/ltx-2-19b-dev-fp8.safetensors"
 
-# Gemma Text Encoder (22.71 GB)
+# Gemma Text Encoder (requires HF token)
+echo ""
+echo "[2/4] Gemma Text Encoder (requires authentication)"
 download_hf_file \
     "google/gemma-3-12b-it-qat-q4_0-unquantized" \
     "model.safetensors" \
     "/comfyui/models/text_encoders/gemma_3_12B_it.safetensors"
 
 # Spatial Upscaler (996 MB)
+echo ""
+echo "[3/4] Spatial Upscaler"
 download_hf_file \
     "Lightricks/LTX-2" \
     "ltx-2-spatial-upscaler-x2-1.0.safetensors" \
     "/comfyui/models/latent_upscale_models/ltx-2-spatial-upscaler-x2-1.0.safetensors"
 
 # Distilled LoRA (7.67 GB)
+echo ""
+echo "[4/4] Distilled LoRA"
 download_hf_file \
     "Lightricks/LTX-2" \
     "ltx-2-19b-distilled-lora-384.safetensors" \
@@ -100,8 +142,10 @@ verify_model "/comfyui/models/loras/ltx-2-19b-distilled-lora-384.safetensors" "D
 
 if [ $MISSING -eq 1 ]; then
     echo ""
-    echo "WARNING: Some models are missing! Generation may fail."
-    echo ""
+    echo "=========================================="
+    echo "WARNING: Some models are missing!"
+    echo "Generation will likely fail."
+    echo "=========================================="
 fi
 
 echo ""
