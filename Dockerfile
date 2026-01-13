@@ -1,5 +1,4 @@
 FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
-
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
@@ -31,7 +30,6 @@ RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://
 
 # Clone ComfyUI
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /comfyui
-
 WORKDIR /comfyui
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -59,23 +57,13 @@ RUN git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git && \
     cd ComfyUI-VideoHelperSuite && \
     pip install --no-cache-dir -r requirements.txt || true
 
-# Install ComfyUI-KJNodes (has ResizeImageMaskNode and other utilities)
+# Install ComfyUI-KJNodes
 RUN git clone https://github.com/kijai/ComfyUI-KJNodes.git && \
     cd ComfyUI-KJNodes && \
     pip install --no-cache-dir -r requirements.txt || true
 
-# Copy any additional custom nodes if needed
-COPY custom_nodes/ /comfyui/custom_nodes/
-
-# Install custom node requirements
-RUN for dir in /comfyui/custom_nodes/*/; do \
-    if [ -f "${dir}requirements.txt" ]; then \
-        pip install --no-cache-dir -r "${dir}requirements.txt" || true; \
-    fi \
-done
-
-# Copy workflows
-COPY workflows/ /comfyui/workflows/
+# CRITICAL: Reinstall PyTorch to fix any CUDA version conflicts from custom nodes
+RUN pip install --no-cache-dir --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # Copy handler and start script
 COPY handler.py /handler.py
