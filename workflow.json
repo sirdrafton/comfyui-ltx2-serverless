@@ -1,0 +1,61 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "input_image.png"
+    }
+  },
+  "2": {
+    "class_type": "ImageResize",
+    "inputs": {
+      "image": ["1", 0],
+      "resize_type": "scale_dimensions",
+      "width": 720,
+      "height": 720,
+      "crop": "center",
+      "scale_method": "lanczos"
+    }
+  },
+  "3": {
+    "class_type": "LTXVLoader",
+    "inputs": {
+      "ckpt_name": "ltx-2-19b-dev-fp8.safetensors",
+      "dtype": "bfloat16"
+    }
+  },
+  "4": {
+    "class_type": "LTXVTextEncode",
+    "inputs": {
+      "prompt": "A 3D animated scene",
+      "negative_prompt": "blurry, low quality, distorted",
+      "ltxv_model": ["3", 0]
+    }
+  },
+  "5": {
+    "class_type": "LTXVImg2Vid",
+    "inputs": {
+      "image": ["2", 0],
+      "ltxv_model": ["3", 0],
+      "positive": ["4", 0],
+      "negative": ["4", 1],
+      "frame_count": 97,
+      "noise_seed": 55,
+      "steps": 4,
+      "cfg": 1.0,
+      "control_after_generate": "fixed"
+    }
+  },
+  "6": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["5", 0],
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "video/LTX_2_i2v",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true,
+      "crf": 19
+    }
+  }
+}
