@@ -196,7 +196,7 @@ def modify_workflow(workflow: Dict, params: Dict) -> Dict:
     
     # Update frame count (node 92:62)
     if "92:62" in workflow:
-        workflow["92:62"]["inputs"]["length"] = params["frame_count"]
+        workflow["92:62"]["inputs"]["value"] = params["frame_count"]
         logger.debug(f"  Updated node 92:62 (Frame count): {params['frame_count']}")
     
     # Update steps (node 92:9)
