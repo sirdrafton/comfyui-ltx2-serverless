@@ -62,8 +62,11 @@ RUN git clone https://github.com/kijai/ComfyUI-KJNodes.git && \
     cd ComfyUI-KJNodes && \
     pip install --no-cache-dir -r requirements.txt || true
 
-# Install ComfyUI-Custom-Scripts (no requirements.txt, just clone)
+# Install ComfyUI-Custom-Scripts for MathExpression node (audio workflow)
 RUN git clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git
+
+# CRITICAL: Reinstall PyTorch LAST to fix any CUDA version conflicts from custom nodes
+RUN pip install --no-cache-dir --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # Copy handler and start script
 COPY handler.py /handler.py
