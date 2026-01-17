@@ -146,41 +146,6 @@
       "title": "CFGGuider"
     }
   },
-  "92:51": {
-    "inputs": {
-      "frames_number": [
-        "92:62",
-        0
-      ],
-      "frame_rate": 25,
-      "batch_size": 1,
-      "audio_vae": [
-        "92:48",
-        0
-      ]
-    },
-    "class_type": "LTXVEmptyLatentAudio",
-    "_meta": {
-      "title": "LTXV Empty Latent Audio"
-    }
-  },
-  "92:22": {
-    "inputs": {
-      "frame_rate": 25,
-      "positive": [
-        "92:3",
-        0
-      ],
-      "negative": [
-        "92:4",
-        0
-      ]
-    },
-    "class_type": "LTXVConditioning",
-    "_meta": {
-      "title": "LTXVConditioning"
-    }
-  },
   "92:4": {
     "inputs": {
       "text": "blurry, low quality, still frame, frames, watermark, overlay, titles, has blurbox, has subtitles",
@@ -251,7 +216,7 @@
   },
   "92:11": {
     "inputs": {
-      "noise_seed": 55
+      "noise_seed": 0
     },
     "class_type": "RandomNoise",
     "_meta": {
@@ -260,7 +225,7 @@
   },
   "92:3": {
     "inputs": {
-      "text": "A 3D animated scene in a cozy library. The elderly tortoise and young fox sit together in comfortable silence. The tortoise blinks slowly and breathes gently. The fox's ears twitch slightly, tail sways softly. No talking, no dialogue, both mouths stay closed. Warm firelight flickers in the background. The camera remains static.",
+      "text": "A character speaking with natural mouth movements and gestures.",
       "clip": [
         "92:60",
         0
@@ -269,23 +234,6 @@
     "class_type": "CLIPTextEncode",
     "_meta": {
       "title": "CLIP Text Encode (Prompt)"
-    }
-  },
-  "92:97": {
-    "inputs": {
-      "fps": 25,
-      "images": [
-        "92:95",
-        0
-      ],
-      "audio": [
-        "92:96",
-        0
-      ]
-    },
-    "class_type": "CreateVideo",
-    "_meta": {
-      "title": "Create Video"
     }
   },
   "92:80": {
@@ -381,22 +329,6 @@
       "title": "LTXV Audio VAE Loader"
     }
   },
-  "92:56": {
-    "inputs": {
-      "video_latent": [
-        "92:107",
-        0
-      ],
-      "audio_latent": [
-        "92:51",
-        0
-      ]
-    },
-    "class_type": "LTXVConcatAVLatent",
-    "_meta": {
-      "title": "LTXVConcatAVLatent"
-    }
-  },
   "92:84": {
     "inputs": {
       "samples": [
@@ -464,19 +396,6 @@
       "title": "Get Image Size"
     }
   },
-  "92:99": {
-    "inputs": {
-      "img_compression": 33,
-      "image": [
-        "92:106",
-        0
-      ]
-    },
-    "class_type": "LTXVPreprocess",
-    "_meta": {
-      "title": "LTXVPreprocess"
-    }
-  },
   "92:43": {
     "inputs": {
       "width": [
@@ -488,7 +407,7 @@
         1
       ],
       "length": [
-        "92:62",
+        "92:116",
         0
       ],
       "batch_size": 1
@@ -496,28 +415,6 @@
     "class_type": "EmptyLTXVLatentVideo",
     "_meta": {
       "title": "EmptyLTXVLatentVideo"
-    }
-  },
-  "92:107": {
-    "inputs": {
-      "strength": 1,
-      "bypass": false,
-      "vae": [
-        "92:1",
-        2
-      ],
-      "image": [
-        "92:99",
-        0
-      ],
-      "latent": [
-        "92:43",
-        0
-      ]
-    },
-    "class_type": "LTXVImgToVideoInplace",
-    "_meta": {
-      "title": "LTXVImgToVideoInplace"
     }
   },
   "92:83": {
@@ -613,6 +510,147 @@
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
       "title": "Load Checkpoint"
+    }
+  },
+  "92:22": {
+    "inputs": {
+      "frame_rate": [
+        "92:115",
+        0
+      ],
+      "positive": [
+        "92:3",
+        0
+      ],
+      "negative": [
+        "92:4",
+        0
+      ]
+    },
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "LTXVConditioning"
+    }
+  },
+  "92:56": {
+    "inputs": {
+      "video_latent": [
+        "92:107",
+        0
+      ],
+      "audio_latent": [
+        "92:113",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "92:107": {
+    "inputs": {
+      "strength": 1,
+      "bypass": false,
+      "vae": [
+        "92:1",
+        2
+      ],
+      "image": [
+        "92:99",
+        0
+      ],
+      "latent": [
+        "92:43",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplace",
+    "_meta": {
+      "title": "LTXVImgToVideoInplace"
+    }
+  },
+  "92:99": {
+    "inputs": {
+      "img_compression": 33,
+      "image": [
+        "92:106",
+        0
+      ]
+    },
+    "class_type": "LTXVPreprocess",
+    "_meta": {
+      "title": "LTXVPreprocess"
+    }
+  },
+  "92:115": {
+    "inputs": {
+      "value": 25
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "Float"
+    }
+  },
+  "92:114": {
+    "inputs": {
+      "audio": "input_audio.mp3",
+      "start_time": 0,
+      "duration": 0
+    },
+    "class_type": "VHS_LoadAudioUpload",
+    "_meta": {
+      "title": "Load Audio (Upload)"
+    }
+  },
+  "92:116": {
+    "inputs": {
+      "expression": "a*b",
+      "a": [
+        "92:114",
+        1
+      ],
+      "b": [
+        "92:115",
+        0
+      ]
+    },
+    "class_type": "MathExpression|pysssss",
+    "_meta": {
+      "title": "Math Expression"
+    }
+  },
+  "92:113": {
+    "inputs": {
+      "audio": [
+        "92:114",
+        0
+      ],
+      "audio_vae": [
+        "92:48",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEEncode",
+    "_meta": {
+      "title": "LTXV Audio VAE Encode"
+    }
+  },
+  "92:97": {
+    "inputs": {
+      "fps": 25,
+      "images": [
+        "92:95",
+        0
+      ],
+      "audio": [
+        "92:114",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Create Video"
     }
   }
 }

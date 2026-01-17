@@ -1,14 +1,14 @@
 """
 ComfyUI LTX-2 Video Serverless Handler for RunPod
 
-Supports:
-- Image-to-video (standard mode) - uses workflow.json
-- Image-to-video with audio conditioning (audio mode) - uses workflow_audio.json
+This handler provides image-to-video generation with audio using the LTX-2 model
+via ComfyUI on RunPod serverless infrastructure.
 """
 
 import runpod
 import json
 import urllib.request
+import urllib.parse
 import base64
 import time
 import os
@@ -24,11 +24,14 @@ import random
 # ============================================================================
 
 class CustomFormatter(logging.Formatter):
+    """Custom formatter with colors and better formatting"""
+    
     grey = "\x1b[38;20m"
     blue = "\x1b[34;20m"
     yellow = "\x1b[33;20m"
     red = "\x1b[31;20m"
     bold_red = "\x1b[31;1m"
+    green = "\x1b[32;20m"
     reset = "\x1b[0m"
     
     format_str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
@@ -47,13 +50,17 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 def setup_logging():
+    """Setup logging configuration"""
     logger = logging.getLogger("LTX2-Handler")
     logger.setLevel(logging.DEBUG)
+    
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(CustomFormatter())
+    
     logger.handlers = []
     logger.addHandler(console_handler)
+    
     return logger
 
 logger = setup_logging()
@@ -69,7 +76,6 @@ COMFYUI_URL = f"http://{COMFYUI_HOST}:{COMFYUI_PORT}"
 DEFAULT_PARAMS = {
     "width": 720,
     "height": 720,
-    "frame_count": 97,
     "steps": 20,
     "cfg": 4.0,
     "fps": 25,
@@ -77,21 +83,24 @@ DEFAULT_PARAMS = {
     "timeout": 600
 }
 
-DEFAULT_NEGATIVE_PROMPT = "blurry, low quality, distorted, extra limbs, bad anatomy, watermark, text, deformed"
+DEFAULT_NEGATIVE_PROMPT = "blurry, low quality, still frame, frames, watermark, overlay, titles, has blurbox, has subtitles"
 
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
 def log_separator(char="-", length=80):
+    """Print a separator line"""
     logger.info(char * length)
 
 def log_section(title: str):
+    """Log a section header"""
     log_separator("=")
     logger.info(f"  {title}")
     log_separator("=")
 
 def wait_for_comfyui(timeout: int = 120) -> bool:
+    """Wait for ComfyUI server to be ready"""
     logger.info(f"Waiting for ComfyUI server at {COMFYUI_URL}...")
     start_time = time.time()
     
@@ -109,13 +118,16 @@ def wait_for_comfyui(timeout: int = 120) -> bool:
     return False
 
 def save_input_image(image_data: str, filename: str = "input_image.png") -> str:
+    """Save base64 image to input directory"""
     logger.info("Saving input image...")
+    
     try:
         if "base64," in image_data:
             image_data = image_data.split("base64,")[1]
         
         image_bytes = base64.b64decode(image_data)
         filepath = f"/comfyui/input/{filename}"
+        
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         
         with open(filepath, "wb") as f:
@@ -124,18 +136,22 @@ def save_input_image(image_data: str, filename: str = "input_image.png") -> str:
         file_size = os.path.getsize(filepath)
         logger.info(f"✓ Saved input image to {filepath} ({file_size} bytes)")
         return filepath
+        
     except Exception as e:
         logger.error(f"✗ Failed to save input image: {e}")
         raise
 
 def save_input_audio(audio_data: str, filename: str = "input_audio.mp3") -> str:
+    """Save base64 audio to input directory"""
     logger.info("Saving input audio...")
+    
     try:
         if "base64," in audio_data:
             audio_data = audio_data.split("base64,")[1]
         
         audio_bytes = base64.b64decode(audio_data)
         filepath = f"/comfyui/input/{filename}"
+        
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         
         with open(filepath, "wb") as f:
@@ -144,12 +160,15 @@ def save_input_audio(audio_data: str, filename: str = "input_audio.mp3") -> str:
         file_size = os.path.getsize(filepath)
         logger.info(f"✓ Saved input audio to {filepath} ({file_size} bytes)")
         return filepath
+        
     except Exception as e:
         logger.error(f"✗ Failed to save input audio: {e}")
         raise
 
-def load_workflow(workflow_path: str) -> Dict:
+def load_workflow(workflow_path: str = "/workflow.json") -> Dict:
+    """Load the ComfyUI workflow"""
     logger.info(f"Loading workflow from {workflow_path}...")
+    
     try:
         with open(workflow_path, "r") as f:
             workflow = json.load(f)
@@ -159,145 +178,67 @@ def load_workflow(workflow_path: str) -> Dict:
         logger.error(f"✗ Failed to load workflow: {e}")
         raise
 
-def modify_workflow_standard(workflow: Dict, params: Dict) -> Dict:
-    """Modify workflow for standard (no audio) mode"""
-    logger.info("Modifying workflow for STANDARD mode...")
+def modify_workflow(workflow: Dict, params: Dict) -> Dict:
+    """Modify workflow parameters based on input"""
+    logger.info("Modifying workflow parameters...")
     
-    # Handle seed
     seed = params.get("seed")
     if seed is None or seed == -1:
         seed = random.randint(0, 2**31 - 1)
         logger.info(f"  Generated random seed: {seed}")
-    params["seed"] = seed
+        params["seed"] = seed
     
-    # Update LoadImage node (98)
+    # Update LoadImage node (node 98)
     if "98" in workflow:
         workflow["98"]["inputs"]["image"] = "input_image.png"
-        logger.debug("  Updated node 98 (LoadImage)")
+        logger.debug(f"  Updated node 98 (LoadImage): input_image.png")
     
-    # Update Resize node (102)
-    if "102" in workflow:
-        workflow["102"]["inputs"]["resize_type.width"] = params["width"]
-        workflow["102"]["inputs"]["resize_type.height"] = params["height"]
-        logger.debug(f"  Updated node 102 (Resize): {params['width']}x{params['height']}")
-    
-    # Update positive prompt (92:3)
-    if "92:3" in workflow:
-        workflow["92:3"]["inputs"]["text"] = params["prompt"]
-        logger.debug("  Updated node 92:3 (Positive prompt)")
-    
-    # Update negative prompt (92:4)
-    if "92:4" in workflow:
-        workflow["92:4"]["inputs"]["text"] = params.get("negative_prompt", DEFAULT_NEGATIVE_PROMPT)
-        logger.debug("  Updated node 92:4 (Negative prompt)")
-    
-    # Update noise seeds (92:11 and 92:67)
-    for node_id in ["92:11", "92:67"]:
-        if node_id in workflow:
-            workflow[node_id]["inputs"]["noise_seed"] = seed
-            logger.debug(f"  Updated node {node_id} (Noise seed): {seed}")
-    
-    # Update frame count (92:62)
-    if "92:62" in workflow:
-        workflow["92:62"]["inputs"]["value"] = params["frame_count"]
-        logger.debug(f"  Updated node 92:62 (Frame count): {params['frame_count']}")
-    
-    # Update steps (92:9)
-    if "92:9" in workflow:
-        workflow["92:9"]["inputs"]["steps"] = params["steps"]
-        logger.debug(f"  Updated node 92:9 (Steps): {params['steps']}")
-    
-    # Update CFG (92:47)
-    if "92:47" in workflow:
-        workflow["92:47"]["inputs"]["cfg"] = params["cfg"]
-        logger.debug(f"  Updated node 92:47 (CFG): {params['cfg']}")
-    
-    # Update FPS in conditioning (92:22)
-    if "92:22" in workflow:
-        workflow["92:22"]["inputs"]["frame_rate"] = params["fps"]
-        logger.debug(f"  Updated node 92:22 (Frame rate): {params['fps']}")
-    
-    # Update FPS in CreateVideo (92:97)
-    if "92:97" in workflow:
-        workflow["92:97"]["inputs"]["fps"] = params["fps"]
-        logger.debug(f"  Updated node 92:97 (CreateVideo FPS): {params['fps']}")
-    
-    # Update FPS in EmptyLatentAudio (92:51)
-    if "92:51" in workflow:
-        workflow["92:51"]["inputs"]["frame_rate"] = params["fps"]
-        logger.debug(f"  Updated node 92:51 (EmptyLatentAudio frame_rate): {params['fps']}")
-    
-    return workflow
-
-def modify_workflow_audio(workflow: Dict, params: Dict) -> Dict:
-    """Modify workflow for audio-conditioned mode"""
-    logger.info("Modifying workflow for AUDIO mode...")
-    
-    # Handle seed
-    seed = params.get("seed")
-    if seed is None or seed == -1:
-        seed = random.randint(0, 2**31 - 1)
-        logger.info(f"  Generated random seed: {seed}")
-    params["seed"] = seed
-    
-    # Update LoadImage node (98)
-    if "98" in workflow:
-        workflow["98"]["inputs"]["image"] = "input_image.png"
-        logger.debug("  Updated node 98 (LoadImage)")
-    
-    # Update Resize node (102)
-    if "102" in workflow:
-        workflow["102"]["inputs"]["resize_type.width"] = params["width"]
-        workflow["102"]["inputs"]["resize_type.height"] = params["height"]
-        logger.debug(f"  Updated node 102 (Resize): {params['width']}x{params['height']}")
-    
-    # Update positive prompt (92:3)
-    if "92:3" in workflow:
-        workflow["92:3"]["inputs"]["text"] = params["prompt"]
-        logger.debug("  Updated node 92:3 (Positive prompt)")
-    
-    # Update negative prompt (92:4)
-    if "92:4" in workflow:
-        workflow["92:4"]["inputs"]["text"] = params.get("negative_prompt", DEFAULT_NEGATIVE_PROMPT)
-        logger.debug("  Updated node 92:4 (Negative prompt)")
-    
-    # Update noise seeds (92:11 and 92:67)
-    for node_id in ["92:11", "92:67"]:
-        if node_id in workflow:
-            workflow[node_id]["inputs"]["noise_seed"] = seed
-            logger.debug(f"  Updated node {node_id} (Noise seed): {seed}")
-    
-    # Update steps (92:9)
-    if "92:9" in workflow:
-        workflow["92:9"]["inputs"]["steps"] = params["steps"]
-        logger.debug(f"  Updated node 92:9 (Steps): {params['steps']}")
-    
-    # Update CFG (92:47)
-    if "92:47" in workflow:
-        workflow["92:47"]["inputs"]["cfg"] = params["cfg"]
-        logger.debug(f"  Updated node 92:47 (CFG): {params['cfg']}")
-    
-    # Update FPS (92:115) - used by MathExpression for frame calculation
-    if "92:115" in workflow:
-        workflow["92:115"]["inputs"]["value"] = params["fps"]
-        logger.debug(f"  Updated node 92:115 (FPS): {params['fps']}")
-    
-    # Update FPS in CreateVideo (92:97)
-    if "92:97" in workflow:
-        workflow["92:97"]["inputs"]["fps"] = params["fps"]
-        logger.debug(f"  Updated node 92:97 (CreateVideo FPS): {params['fps']}")
-    
-    # Update audio loader (92:114)
+    # Update Load Audio node (node 92:114)
     if "92:114" in workflow:
         workflow["92:114"]["inputs"]["audio"] = "input_audio.mp3"
-        workflow["92:114"]["inputs"]["start_time"] = params.get("audio_start_time", 0)
-        workflow["92:114"]["inputs"]["duration"] = params.get("audio_duration", 0)
-        logger.debug("  Updated node 92:114 (LoadAudio)")
+        logger.debug(f"  Updated node 92:114 (LoadAudio): input_audio.mp3")
+    
+    # Update positive prompt (node 92:3)
+    if "92:3" in workflow and params.get("prompt"):
+        workflow["92:3"]["inputs"]["text"] = params["prompt"]
+        logger.debug(f"  Updated node 92:3 (Positive prompt)")
+    
+    # Update negative prompt (node 92:4)
+    if "92:4" in workflow and params.get("negative_prompt"):
+        workflow["92:4"]["inputs"]["text"] = params.get("negative_prompt", DEFAULT_NEGATIVE_PROMPT)
+        logger.debug(f"  Updated node 92:4 (Negative prompt)")
+    
+    # Update noise seed nodes (92:11 and 92:67)
+    for node_id in ["92:11", "92:67"]:
+        if node_id in workflow:
+            workflow[node_id]["inputs"]["noise_seed"] = seed
+            logger.debug(f"  Updated node {node_id} (Noise seed): {seed}")
+    
+    # Update steps (node 92:9)
+    if "92:9" in workflow and params.get("steps"):
+        workflow["92:9"]["inputs"]["steps"] = params["steps"]
+        logger.debug(f"  Updated node 92:9 (Steps): {params['steps']}")
+    
+    # Update CFG (node 92:47)
+    if "92:47" in workflow and params.get("cfg"):
+        workflow["92:47"]["inputs"]["cfg"] = params["cfg"]
+        logger.debug(f"  Updated node 92:47 (CFG): {params['cfg']}")
+    
+    # Update FPS (node 92:115 and 92:97)
+    if params.get("fps"):
+        if "92:115" in workflow:
+            workflow["92:115"]["inputs"]["value"] = params["fps"]
+            logger.debug(f"  Updated node 92:115 (FPS): {params['fps']}")
+        if "92:97" in workflow:
+            workflow["92:97"]["inputs"]["fps"] = params["fps"]
+            logger.debug(f"  Updated node 92:97 (CreateVideo FPS): {params['fps']}")
     
     return workflow
 
 def queue_prompt(workflow: Dict) -> str:
+    """Queue a prompt to ComfyUI and return the prompt ID"""
     logger.info("Queueing prompt to ComfyUI...")
+    
     try:
         data = json.dumps({"prompt": workflow}).encode("utf-8")
         req = urllib.request.Request(
@@ -312,12 +253,15 @@ def queue_prompt(workflow: Dict) -> str:
         
         logger.info(f"✓ Prompt queued with ID: {prompt_id}")
         return prompt_id
+        
     except Exception as e:
         logger.error(f"✗ Failed to queue prompt: {e}")
         raise
 
 def wait_for_completion(prompt_id: str, timeout: int = 600) -> Dict:
+    """Wait for the prompt to complete and return the result"""
     logger.info(f"Waiting for completion (timeout: {timeout}s)...")
+    
     start_time = time.time()
     last_progress = 0
     
@@ -347,7 +291,7 @@ def wait_for_completion(prompt_id: str, timeout: int = 600) -> Dict:
             if current_time % 10 == 0 and current_time != last_progress:
                 logger.info(f"  Progress: {current_time}s elapsed...")
                 last_progress = current_time
-                
+            
         except urllib.error.URLError as e:
             logger.debug(f"Status check error: {e}")
         except RuntimeError:
@@ -361,6 +305,7 @@ def wait_for_completion(prompt_id: str, timeout: int = 600) -> Dict:
     raise TimeoutError(f"Generation timed out after {timeout} seconds")
 
 def get_output_video(outputs: Dict) -> Optional[str]:
+    """Extract the output video from the results"""
     logger.info("Extracting output video...")
     
     for node_id, node_output in outputs.items():
@@ -394,6 +339,7 @@ def get_output_video(outputs: Dict) -> Optional[str]:
                         
                         with open(filepath, "rb") as f:
                             video_data = base64.b64encode(f.read()).decode("utf-8")
+                        
                         return video_data
     
     # Fallback: scan output directory
@@ -408,9 +354,10 @@ def get_output_video(outputs: Dict) -> Optional[str]:
                     
                     with open(filepath, "rb") as f:
                         video_data = base64.b64encode(f.read()).decode("utf-8")
+                    
                     return video_data
     
-    logger.warning("✗ No output video found")
+    logger.warning("✗ No output video found in results")
     return None
 
 # ============================================================================
@@ -418,25 +365,6 @@ def get_output_video(outputs: Dict) -> Optional[str]:
 # ============================================================================
 
 def handler(job: Dict) -> Dict:
-    """
-    Main handler for LTX-2 video generation.
-    
-    Input parameters:
-        image (required): Base64-encoded input image
-        prompt (required): Text prompt for video generation
-        audio (optional): Base64-encoded audio file - if provided, uses audio workflow
-        audio_start_time (optional): Start time in audio file (default: 0)
-        audio_duration (optional): Duration to use from audio (default: 0 = full)
-        negative_prompt (optional): Negative prompt
-        width (optional): Output width (default: 720)
-        height (optional): Output height (default: 720)
-        frame_count (optional): Number of frames - only used if NO audio (default: 97)
-        steps (optional): Sampling steps (default: 20)
-        cfg (optional): CFG scale (default: 4.0)
-        fps (optional): Frames per second (default: 25)
-        seed (optional): Random seed (default: random)
-        timeout (optional): Max generation time in seconds (default: 600)
-    """
     job_id = job.get("id", "unknown")
     log_section(f"LTX-2 VIDEO GENERATION JOB: {job_id}")
     
@@ -445,42 +373,31 @@ def handler(job: Dict) -> Dict:
     try:
         job_input = job.get("input", {})
         
-        # Validate required fields
+        # Validate required inputs
         if "image" not in job_input:
+            logger.error("Missing required field: image")
             return {"error": "Missing required field: image"}
         
-        if "prompt" not in job_input:
-            return {"error": "Missing required field: prompt"}
+        if "audio" not in job_input:
+            logger.error("Missing required field: audio")
+            return {"error": "Missing required field: audio"}
         
-        # Determine mode
-        use_audio = "audio" in job_input and job_input["audio"]
-        
-        # Build parameters
+        # Build params
         params = {
-            "prompt": job_input["prompt"],
+            "image": job_input["image"],
+            "audio": job_input["audio"],
+            "prompt": job_input.get("prompt", "A character speaking with natural mouth movements and gestures."),
             "negative_prompt": job_input.get("negative_prompt", DEFAULT_NEGATIVE_PROMPT),
-            "width": job_input.get("width", DEFAULT_PARAMS["width"]),
-            "height": job_input.get("height", DEFAULT_PARAMS["height"]),
-            "frame_count": job_input.get("frame_count", DEFAULT_PARAMS["frame_count"]),
             "steps": job_input.get("steps", DEFAULT_PARAMS["steps"]),
             "cfg": job_input.get("cfg", DEFAULT_PARAMS["cfg"]),
             "fps": job_input.get("fps", DEFAULT_PARAMS["fps"]),
             "seed": job_input.get("seed", DEFAULT_PARAMS["seed"]),
-            "timeout": job_input.get("timeout", DEFAULT_PARAMS["timeout"]),
-            "audio_start_time": job_input.get("audio_start_time", 0),
-            "audio_duration": job_input.get("audio_duration", 0)
+            "timeout": job_input.get("timeout", DEFAULT_PARAMS["timeout"])
         }
         
-        # Log parameters
         logger.info("Input parameters:")
         prompt_display = params['prompt'][:100] + "..." if len(params['prompt']) > 100 else params['prompt']
         logger.info(f"  Prompt: {prompt_display}")
-        logger.info(f"  Size: {params['width']}x{params['height']}")
-        logger.info(f"  Mode: {'AUDIO' if use_audio else 'STANDARD'}")
-        if not use_audio:
-            logger.info(f"  Frames: {params['frame_count']}")
-        else:
-            logger.info(f"  Frames: calculated from audio duration")
         logger.info(f"  Steps: {params['steps']}")
         logger.info(f"  CFG: {params['cfg']}")
         logger.info(f"  FPS: {params['fps']}")
@@ -490,20 +407,13 @@ def handler(job: Dict) -> Dict:
         if not wait_for_comfyui():
             return {"error": "ComfyUI server not available"}
         
-        # Save input image
-        save_input_image(job_input["image"])
-        
-        # Save input audio if provided
-        if use_audio:
-            save_input_audio(job_input["audio"])
+        # Save inputs
+        save_input_image(params["image"])
+        save_input_audio(params["audio"])
         
         # Load and modify workflow
-        if use_audio:
-            workflow = load_workflow("/workflow_audio.json")
-            workflow = modify_workflow_audio(workflow, params)
-        else:
-            workflow = load_workflow("/workflow.json")
-            workflow = modify_workflow_standard(workflow, params)
+        workflow = load_workflow()
+        workflow = modify_workflow(workflow, params)
         
         # Queue and wait
         prompt_id = queue_prompt(workflow)
@@ -522,11 +432,8 @@ def handler(job: Dict) -> Dict:
         return {
             "video": video_data,
             "seed": params["seed"],
-            "mode": "audio" if use_audio else "standard",
             "parameters": {
                 "prompt": params["prompt"],
-                "width": params["width"],
-                "height": params["height"],
                 "steps": params["steps"],
                 "cfg": params["cfg"],
                 "fps": params["fps"]
@@ -555,7 +462,6 @@ if __name__ == "__main__":
     logger.info(f"ComfyUI URL: {COMFYUI_URL}")
     logger.info(f"Python version: {sys.version}")
     logger.info(f"Start time: {datetime.now().isoformat()}")
-    logger.info("Supports: Standard (image+prompt) and Audio (image+prompt+audio) modes")
     
     log_separator()
     logger.info("Starting RunPod serverless handler...")
