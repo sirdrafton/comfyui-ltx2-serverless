@@ -59,6 +59,12 @@ RUN git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git && \
 
 # Install ComfyUI-KJNodes
 RUN git clone https://github.com/kijai/ComfyUI-KJNodes.git && \
+
+# Install ComfyUI-Custom-Scripts for MathExpression node (audio workflow)
+RUN git clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git
+
+# Install ComfyUI-Custom-Scripts for MathExpression node (audio workflow)
+RUN git clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git
     cd ComfyUI-KJNodes && \
     pip install --no-cache-dir -r requirements.txt || true
 
