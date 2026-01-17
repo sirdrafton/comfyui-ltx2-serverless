@@ -59,14 +59,11 @@ RUN git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git && \
 
 # Install ComfyUI-KJNodes
 RUN git clone https://github.com/kijai/ComfyUI-KJNodes.git && \
-
-# Install ComfyUI-Custom-Scripts for MathExpression node (audio workflow)
-RUN git clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git
-
-# Install ComfyUI-Custom-Scripts for MathExpression node (audio workflow)
-RUN git clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git
     cd ComfyUI-KJNodes && \
     pip install --no-cache-dir -r requirements.txt || true
+
+# Install ComfyUI-Custom-Scripts for MathExpression node (audio workflow)
+RUN git clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git
 
 # CRITICAL: Reinstall PyTorch to fix any CUDA version conflicts from custom nodes
 RUN pip install --no-cache-dir --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
@@ -75,6 +72,7 @@ RUN pip install --no-cache-dir --force-reinstall torch torchvision torchaudio --
 COPY handler.py /handler.py
 COPY start.sh /start.sh
 COPY workflow.json /workflow.json
+COPY workflow_audio.json /workflow_audio.json
 RUN chmod +x /start.sh
 
 WORKDIR /
