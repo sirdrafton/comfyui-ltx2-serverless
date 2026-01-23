@@ -32,28 +32,24 @@ echo "=========================================="
 echo "Downloading Models..."
 echo "=========================================="
 
-# 1. LTX-2 Checkpoint (25GB)
 echo ""
 echo "[1/4] LTX-2 Checkpoint"
 download_file \
     "https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev-fp8.safetensors" \
     "/comfyui/models/checkpoints/ltx-2-19b-dev-fp8.safetensors"
 
-# 2. Gemma Text Encoder (23GB) - From Comfy-Org (pre-merged, no auth needed)
 echo ""
 echo "[2/4] Gemma Text Encoder"
 download_file \
     "https://huggingface.co/Comfy-Org/ltx-2/resolve/main/split_files/text_encoders/gemma_3_12B_it.safetensors" \
     "/comfyui/models/text_encoders/gemma_3_12B_it.safetensors"
 
-# 3. Spatial Upscaler (950MB)
 echo ""
 echo "[3/4] Spatial Upscaler"
 download_file \
     "https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-spatial-upscaler-x2-1.0.safetensors" \
     "/comfyui/models/latent_upscale_models/ltx-2-spatial-upscaler-x2-1.0.safetensors"
 
-# 4. Distilled LoRA (7.15GB)
 echo ""
 echo "[4/4] Distilled LoRA"
 download_file \
