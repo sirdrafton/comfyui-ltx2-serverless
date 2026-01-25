@@ -117,12 +117,50 @@ def save_input_audio(audio_data: str, filename: str = "input_audio.mp3") -> Tupl
         if "base64," in audio_data:
             audio_data = audio_data.split("base64,")[1]
         audio_bytes = base64.b64decode(audio_data)
+        temp_filepath = f"/comfyui/input/temp_{filename}"
         filepath = f"/comfyui/input/{filename}"
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "wb") as f:
+        with open(temp_filepath, "wb") as f:
             f.write(audio_bytes)
-        file_size = os.path.getsize(filepath)
-        logger.info(f"Saved input audio to {filepath} ({file_size} bytes)")
+        file_size = os.path.getsize(temp_filepath)
+        logger.info(f"Saved temp audio to {temp_filepath} ({file_size} bytes)")
+
+        # Check number of channels
+        try:
+            result = subprocess.run([
+                "ffprobe", "-v", "error",
+                "-select_streams", "a:0",
+                "-show_entries", "stream=channels",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                temp_filepath
+            ], capture_output=True, text=True, timeout=30)
+            channels = int(result.stdout.strip())
+            logger.info(f"Audio channels: {channels}")
+        except Exception as e:
+            logger.warning(f"Could not determine audio channels: {e}")
+            channels = 1  # Assume mono if detection fails
+
+        # Convert mono to stereo if needed (LTX-2 Audio VAE requires stereo)
+        if channels == 1:
+            logger.info("Converting mono audio to stereo...")
+            convert_result = subprocess.run([
+                "ffmpeg", "-y", "-i", temp_filepath,
+                "-ac", "2",  # Convert to 2 channels (stereo)
+                "-ar", "44100",  # Standard sample rate
+                filepath
+            ], capture_output=True, text=True, timeout=60)
+            if convert_result.returncode != 0:
+                logger.error(f"FFmpeg conversion failed: {convert_result.stderr}")
+                # Fall back to original file
+                os.rename(temp_filepath, filepath)
+            else:
+                logger.info("Converted to stereo successfully")
+                os.remove(temp_filepath)
+        else:
+            # Already stereo, just rename
+            os.rename(temp_filepath, filepath)
+
+        # Get duration from final file
         try:
             result = subprocess.run([
                 "ffprobe", "-v", "error",
