@@ -35,8 +35,8 @@ echo "=========================================="
 echo ""
 echo "[1/4] LTX-2 Checkpoint"
 download_file \
-    "https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev-fp8.safetensors" \
-    "/comfyui/models/checkpoints/ltx-2-19b-dev-fp8.safetensors"
+    "https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-distilled-fp8.safetensors" \
+    "/comfyui/models/checkpoints/ltx-2-19b-distilled-fp8.safetensors"
 
 echo ""
 echo "[2/4] Gemma Text Encoder"
@@ -62,7 +62,7 @@ echo "Verifying Models..."
 echo "=========================================="
 
 for f in \
-    "/comfyui/models/checkpoints/ltx-2-19b-dev-fp8.safetensors" \
+    "/comfyui/models/checkpoints/ltx-2-19b-distilled-fp8.safetensors" \
     "/comfyui/models/text_encoders/gemma_3_12B_it.safetensors" \
     "/comfyui/models/latent_upscale_models/ltx-2-spatial-upscaler-x2-1.0.safetensors" \
     "/comfyui/models/loras/ltx-2-19b-distilled-lora-384.safetensors"
