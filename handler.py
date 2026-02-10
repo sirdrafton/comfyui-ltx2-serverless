@@ -227,6 +227,13 @@ def modify_workflow_generated_audio(workflow: Dict, params: Dict) -> Dict:
         workflow["92:107"]["inputs"]["strength"] = params.get("i2v_strength_first", 1.0)
     if "92:108" in workflow:
         workflow["92:108"]["inputs"]["strength"] = params.get("i2v_strength_second", 1.0)
+    # Resolution - resize input image to requested dimensions
+    if "102" in workflow:
+        workflow["102"]["inputs"]["resize_type.width"] = params["width"]
+        workflow["102"]["inputs"]["resize_type.height"] = params["height"]
+    # Spatial upscaler - set longer edge to match requested dimensions
+    if "92:106" in workflow:
+        workflow["92:106"]["inputs"]["longer_edge"] = max(params["width"], params["height"])
     return workflow
 
 def modify_workflow_custom_audio(workflow: Dict, params: Dict, audio_duration: float) -> Dict:
@@ -266,6 +273,13 @@ def modify_workflow_custom_audio(workflow: Dict, params: Dict, audio_duration: f
         workflow["92:107"]["inputs"]["strength"] = params.get("i2v_strength_first", 1.0)
     if "92:108" in workflow:
         workflow["92:108"]["inputs"]["strength"] = params.get("i2v_strength_second", 0.7)
+    # Resolution - resize input image to requested dimensions
+    if "102" in workflow:
+        workflow["102"]["inputs"]["resize_type.width"] = params["width"]
+        workflow["102"]["inputs"]["resize_type.height"] = params["height"]
+    # Spatial upscaler - set longer edge to match requested dimensions
+    if "92:106" in workflow:
+        workflow["92:106"]["inputs"]["longer_edge"] = max(params["width"], params["height"])
     return workflow
 
 def queue_prompt(workflow: Dict) -> str:
@@ -396,6 +410,7 @@ def handler(job: Dict) -> Dict:
 
         logger.info("Input parameters:")
         logger.info(f"  Prompt: {params['prompt'][:100]}...")
+        logger.info(f"  Resolution: {params['width']}x{params['height']}, longer_edge={max(params['width'], params['height'])}")
         logger.info(f"  Steps: {params['steps']}, CFG: {params['cfg']}, FPS: {params['fps']}")
         logger.info(f"  Seed: {params['seed'] or 'random'}")
         logger.info(f"  I2V Strength: first={params['i2v_strength_first']}, second={params['i2v_strength_second']}")
