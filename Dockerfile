@@ -26,7 +26,10 @@ RUN apt-get update && apt-get install -y \
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
-RUN python3.12 -m ensurepip && python3.12 -m pip install --upgrade pip
+RUN python3.12 -m ensurepip --upgrade \
+    && python3.12 -m pip install --no-cache-dir --upgrade pip \
+    && ln -sf /usr/local/bin/pip3.12 /usr/local/bin/pip \
+    && ln -sf /usr/local/bin/pip3.12 /usr/local/bin/pip3
 
 RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 
