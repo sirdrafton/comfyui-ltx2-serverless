@@ -1,28 +1,28 @@
 #!/bin/bash
 set -e
 echo "=========================================="
-echo "Starting ComfyUI LTX-2 Video Worker"
+echo "Starting ComfyUI LTX-2.3 Video Worker"
 echo "=========================================="
 
 download_file() {
     local url=$1
     local dest=$2
-    
+
     if [ -f "$dest" ]; then
         local size=$(du -h "$dest" | cut -f1)
         echo "✓ Already exists: $(basename $dest) ($size)"
         return 0
     fi
-    
+
     echo "  Downloading: $(basename $dest)"
     mkdir -p "$(dirname "$dest")"
-    
+
     if curl -L --fail --progress-bar --max-time 3600 -o "$dest" "$url"; then
         local size=$(du -h "$dest" | cut -f1)
         echo "  ✓ Downloaded: $(basename $dest) ($size)"
         return 0
     fi
-    
+
     echo "  ✗ FAILED: $(basename $dest)"
     return 1
 }
@@ -33,10 +33,10 @@ echo "Downloading Models..."
 echo "=========================================="
 
 echo ""
-echo "[1/4] LTX-2 Checkpoint"
+echo "[1/4] LTX-2.3 Checkpoint (dev-fp8)"
 download_file \
-    "https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-distilled-fp8.safetensors" \
-    "/comfyui/models/checkpoints/ltx-2-19b-distilled-fp8.safetensors"
+    "https://huggingface.co/Lightricks/LTX-2.3-fp8/resolve/main/ltx-2.3-22b-dev-fp8.safetensors" \
+    "/comfyui/models/checkpoints/ltx-2.3-22b-dev-fp8.safetensors"
 
 echo ""
 echo "[2/4] Gemma Text Encoder"
@@ -45,16 +45,16 @@ download_file \
     "/comfyui/models/text_encoders/gemma_3_12B_it.safetensors"
 
 echo ""
-echo "[3/4] Spatial Upscaler"
+echo "[3/4] Spatial Upscaler (2.3)"
 download_file \
-    "https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-spatial-upscaler-x2-1.0.safetensors" \
-    "/comfyui/models/latent_upscale_models/ltx-2-spatial-upscaler-x2-1.0.safetensors"
+    "https://huggingface.co/Lightricks/LTX-2.3/resolve/main/ltx-2.3-spatial-upscaler-x2-1.0.safetensors" \
+    "/comfyui/models/latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
 
 echo ""
-echo "[4/4] Distilled LoRA"
+echo "[4/4] Distilled LoRA (2.3)"
 download_file \
-    "https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-distilled-lora-384.safetensors" \
-    "/comfyui/models/loras/ltx-2-19b-distilled-lora-384.safetensors"
+    "https://huggingface.co/Lightricks/LTX-2.3/resolve/main/ltx-2.3-22b-distilled-lora-384.safetensors" \
+    "/comfyui/models/loras/ltx-2.3-22b-distilled-lora-384.safetensors"
 
 echo ""
 echo "=========================================="
@@ -62,10 +62,10 @@ echo "Verifying Models..."
 echo "=========================================="
 
 for f in \
-    "/comfyui/models/checkpoints/ltx-2-19b-distilled-fp8.safetensors" \
+    "/comfyui/models/checkpoints/ltx-2.3-22b-dev-fp8.safetensors" \
     "/comfyui/models/text_encoders/gemma_3_12B_it.safetensors" \
-    "/comfyui/models/latent_upscale_models/ltx-2-spatial-upscaler-x2-1.0.safetensors" \
-    "/comfyui/models/loras/ltx-2-19b-distilled-lora-384.safetensors"
+    "/comfyui/models/latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.0.safetensors" \
+    "/comfyui/models/loras/ltx-2.3-22b-distilled-lora-384.safetensors"
 do
     if [ -f "$f" ]; then
         size=$(du -h "$f" | cut -f1)

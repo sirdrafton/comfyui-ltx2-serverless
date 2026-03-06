@@ -1,7 +1,7 @@
 """
-ComfyUI LTX-2 Video Serverless Handler for RunPod
+ComfyUI LTX-2.3 Video Serverless Handler for RunPod
 Supports two modes:
-1. Generated Audio: LTX-2 generates audio based on prompt
+1. Generated Audio: LTX-2.3 generates audio based on prompt
 2. Custom Audio: Use pre-generated audio (e.g., from ElevenLabs)
 """
 
