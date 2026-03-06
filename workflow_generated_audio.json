@@ -70,7 +70,7 @@
   "92:60": {
     "inputs": {
       "text_encoder": "gemma_3_12B_it.safetensors",
-      "ckpt_name": "ltx-2-19b-distilled-fp8.safetensors",
+      "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors",
       "device": "default"
     },
     "class_type": "LTXAVTextEncoderLoader",
@@ -98,7 +98,7 @@
   },
   "92:76": {
     "inputs": {
-      "model_name": "ltx-2-spatial-upscaler-x2-1.0.safetensors"
+      "model_name": "ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
     },
     "class_type": "LatentUpscaleModelLoader",
     "_meta": {
@@ -129,7 +129,7 @@
     "inputs": {
       "cfg": 1,
       "model": [
-        "92:1",
+        "92:68",
         0
       ],
       "positive": [
@@ -348,7 +348,7 @@
   },
   "92:48": {
     "inputs": {
-      "ckpt_name": "ltx-2-19b-distilled-fp8.safetensors"
+      "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors"
     },
     "class_type": "LTXVAudioVAELoader",
     "_meta": {
@@ -594,11 +594,25 @@
   },
   "92:1": {
     "inputs": {
-      "ckpt_name": "ltx-2-19b-distilled-fp8.safetensors"
+      "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
       "title": "Load Checkpoint"
+    }
+  },
+  "92:68": {
+    "inputs": {
+      "lora_name": "ltx-2.3-22b-distilled-lora-384.safetensors",
+      "strength_model": 1,
+      "model": [
+        "92:1",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
     }
   }
 }
